@@ -1,0 +1,17 @@
+{
+  "importmaps": {
+    "imports": {
+      "tenant1/": "http://localhost:3334/",
+      "tenant1/src/app/ng-tenant-app.module": "http://localhost:3334/bundles/da-tenant.bundle.js"
+    },
+    "scopes": {
+      "tenant1/": {}
+    }
+  },
+  "routes": [
+    {
+      "path": "tenant1",
+      "loadChildren": "tenant1/src/app/ng-tenant-app.module#NgTenantAppModule"
+    }
+  ]
+}

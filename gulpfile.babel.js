@@ -70,6 +70,18 @@ const bundleRxjsOperators = gulp.series(
   doBundleRxjsOperators
 );
 
+const bundleTenant = gulp.series(
+    cleanTmpTenantBundle,
+    transpileClient,
+    bundleCommon,
+    doBundleTenantApp
+);
+
+const copyDaConfig = gulp.series(
+  cleanTmpDaConfig,
+  copyDaConfigFile
+);
+
 const copyDependencies = gulp.series(
   cleanTmpVendor,
   copyVendors
@@ -78,7 +90,9 @@ const copyDependencies = gulp.series(
 const prepareNgFiles = gulp.series(
   bundleApp,
   bundleRxjsOperators,
+  bundleTenant,
   transpileBootstrapper,
+  copyDaConfig,
   copyDependencies,
   copyPrerequisites
 );
@@ -111,6 +125,7 @@ lodash.assign(exports, {
   bundleApp,
   bundleCommon,
   bundleRxjsOperators,
+  bundleTenant,
   cleanUpAll,
   copyDependencies,
   dist: gulp.parallel(
@@ -155,6 +170,12 @@ function cleanTmpCommonBundle() {
   });
 }
 
+function cleanTmpDaConfig() {
+  return del('da-config.json', {
+    cwd: folders.tmp
+  });
+}
+
 /**
  * Remove the Angular 2 dependency files including the "ng2-deps.bundle.js" file and the "ng2-deps.bundle.min.js" file,
  * as well as the corresponding source map files from the "tmp" folder.
@@ -175,6 +196,12 @@ function cleanTmpNgDependencies() {
 
 function cleanTmpRxjsOperatorsBundle() {
   return del(`${ fileNames.findAllBundleFiles(moduleNames.rxjsOperators) }`, {
+    cwd: folders.tmpBundles
+  });
+}
+
+function cleanTmpTenantBundle() {
+  return del(`${ fileNames.findAllBundleFiles(moduleNames.tenant) }`, {
     cwd: folders.tmpBundles
   });
 }
@@ -224,13 +251,12 @@ function constructImportmaps() {
   return aScriptTagForImportmaps.join('');
 }
 
-function copyVendors() {
+function copyDaConfigFile() {
   return gulp
-    .src(lodash.map(filePaths.ngDepsToCopy, path => `${ path }/**/*`), {
-      base: folders.nodeModulesPrefix,
-      cwd: folders.nodeModulesPrefix
+    .src('da-config.json', {
+      cwd: folders.client
     })
-    .pipe(gulp.dest(folders.tmpVendor));
+    .pipe(gulp.dest(folders.tmp));
 }
 
 function copyPackageJson() {
@@ -254,6 +280,15 @@ function copyPrerequisites() {
       cwd: folders.nodeModulesPrefix
     })
     .pipe(gulp.dest(folders.tmpPrereq));
+}
+
+function copyVendors() {
+  return gulp
+    .src(lodash.map(filePaths.ngDepsToCopy, path => `${ path }/**/*`), {
+      base: folders.nodeModulesPrefix,
+      cwd: folders.nodeModulesPrefix
+    })
+    .pipe(gulp.dest(folders.tmpVendor));
 }
 
 function doBundleApp() {
@@ -349,6 +384,38 @@ function doBundleRxjsOperators() {
       ]);
     })
     .catch(utils.onError);
+}
+
+function doBundleTenantApp() {
+  const outputOptions = {
+    format: 'umd',
+    name: moduleNames.tenant,
+    sourcemap: true
+  };
+
+  return rollup({
+    input: `${ folders.tmpSrc }/app/ng-tenant-app.module.js`,
+    plugins: [
+      rollupSourcemaps(),
+      rollupNodeResolve(),
+      rollupCommonJs()
+    ],
+    external: id => lodash.includes(id, 'node_modules') || !/^\.?\.?\//.test(id),
+    treeshake: true
+  })
+      .then(bundle => Promise.all([
+        bundle.write(lodash.assign({}, outputOptions, {
+          file: `${ folders.tmpBundles }/${ fileNames.nameBundleFile(moduleNames.tenant) }`
+        })),
+        bundle.write(lodash.assign({}, outputOptions, {
+          compact: true,
+          file: `${ folders.tmpBundles }/${ fileNames.nameMinBundleFile(moduleNames.tenant) }`,
+          plugins: [
+            rollupTerser.terser()
+          ]
+        }))
+      ]))
+      .catch(utils.onError);
 }
 
 function doDistServerFiles() {

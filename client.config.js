@@ -36,7 +36,8 @@ const path = require('path');
         common: 'da-common',
         core: 'da-core',
         models: 'da-models',
-        rxjsOperators: 'rxjs-operators'
+        rxjsOperators: 'rxjs-operators',
+        tenant: 'da-tenant'
       },
       singleFolderNames: {
         bundles: sBundlesFolder,
