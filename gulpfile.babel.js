@@ -23,7 +23,6 @@ const gPlugins = gLoadPlugins({
   config: `${ folders.projectRoot }/package.json`
 });
 const tsCoreProject = gPlugins.typescript.createProject(`${ folders.client }/tsconfig.json`);
-const tsBootstrapProject = gPlugins.typescript.createProject(`${ folders.client }/tsconfig.bootstrap.json`);
 const tsCommonProject = gPlugins.typescript.createProject(`${ folders.common }/tsconfig.common.json`);
 
 const cleanUpAll = gulp.parallel(
@@ -31,11 +30,6 @@ const cleanUpAll = gulp.parallel(
   cleanTmpTranspiledClient,
   cleanTmpNgDependencies,
   cleanServer
-);
-
-const transpileBootstrapper = gulp.series(
-  cleanTmpBootstrapper,
-  doTranspileBootstrapper
 );
 
 const transpileClient = gulp.series(
@@ -91,7 +85,6 @@ const prepareNgFiles = gulp.series(
   bundleApp,
   bundleRxjsOperators,
   bundleTenant,
-  transpileBootstrapper,
   copyDaConfig,
   copyDependencies,
   copyPrerequisites
@@ -138,20 +131,13 @@ lodash.assign(exports, {
   npmInstall,
   prepareNgFiles,
   transpileClient,
-  transpileCommon,
-  transpileBootstrapper
+  transpileCommon
 });
 
 /************** Function declarations start from here on **************/
 
 function cleanServer() {
   return del(folders.distServer);
-}
-
-function cleanTmpBootstrapper() {
-  return del(`${ fileNames.findAllBundleFiles(moduleNames.bootstrapper) }`, {
-    cwd: folders.tmp
-  });
 }
 
 /**
@@ -448,10 +434,6 @@ function doInjectStaticResource() {
     filePaths.prerequisiteJSFiles,
     folders.tmpPrereq
   );
-  const boostrapJsFileStream = utils.createFilesStream(
-    `${ moduleNames.bootstrapper }${ utils.inProduction() ? '.min' : '' }.js`,
-    folders.tmp
-  );
 
   return gulp
     .src('index.html', {
@@ -467,10 +449,10 @@ function doInjectStaticResource() {
       name: 'prerequisite',
       relative: true
     }))
-    .pipe(gPlugins.inject(boostrapJsFileStream, {
-      name: 'bootstrap',
-      relative: true
-    }))
+    .pipe(gPlugins.injectString.replace(
+      '<!-- bootstrap-app -->',
+      `<script type="text/javascript">System.import('${moduleNames.core}')</script>`
+    ))
     .pipe(gulp.dest(folders.tmp));
 }
 
@@ -483,34 +465,6 @@ function doNpmInstall() {
         cwd: folders.dist
       }
     )();
-}
-
-function doTranspileBootstrapper() {
-  const minificationPipe = lazypipe()
-    .pipe(gPlugins.sourcemaps.init)
-    .pipe(gPlugins.rename, path => {
-      path.extname = `.min${path.extname}`
-    })
-    .pipe(gPlugins.terserJs, {
-      mangle: {
-        toplevel: true
-      }
-    })
-    .pipe(gPlugins.sourcemaps.write, '.');
-
-  return gulp
-    .src(filePaths.bootstrapper, {
-      cwd: folders.srcClient
-    })
-    .pipe(gPlugins.sourcemaps.init())
-    .pipe(tsBootstrapProject(gPlugins.typescript.reporter.fullReporter(true)))
-    .pipe(gPlugins.rename(path => {
-      path.basename = moduleNames.bootstrapper;
-    } ))
-    .pipe(gPlugins.sourcemaps.write('.'))
-    .pipe(gulp.dest(folders.tmp))
-    .pipe(gPlugins.if(file => !lodash.endsWith(file.basename, '.map'), minificationPipe()))
-    .pipe(gulp.dest(folders.tmp));
 }
 
 function doTranspileClient() {

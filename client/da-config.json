@@ -1,17 +1,21 @@
 {
+  "name": "tenant1",
+  "version": "1.0.0",
+  "mode": "dev",
+  "tenantType": "tenant-1",
   "importmaps": {
     "imports": {
-      "tenant1/": "http://localhost:3334/",
-      "tenant1/src/app/ng-tenant-app.module": "http://localhost:3334/bundles/da-tenant.bundle.js"
+      "tenant-1/": "http://localhost:3334/",
+      "tenant-1/src/app/ng-tenant-app.module": "http://localhost:3334/bundles/da-tenant.bundle.js"
     },
     "scopes": {
-      "tenant1/": {}
+      "tenant-1/": {}
     }
   },
   "routes": [
     {
-      "path": "tenant1",
-      "loadChildren": "tenant1/src/app/ng-tenant-app.module#NgTenantAppModule"
+      "path": "tenant-1",
+      "loadChildren": "tenant-1/src/app/ng-tenant-app.module#NgTenantAppModule"
     }
   ]
 }
